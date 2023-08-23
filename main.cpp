@@ -23,7 +23,6 @@ char  decToBinary(int n , char &c)
     // counter for binary array
     int i = 0;
     while (n > 0) {
-        // storing remainder in binary array
         binaryNum[i] = n % 2;
         n = n / 2;
         i++;
@@ -55,7 +54,7 @@ public:
         return fileSize;
     }
 
- /*   void setFileSize(int fileSize) {
+    void setFileSize(int fileSize) {
         fsInode::fileSize = fileSize;
     }
 
@@ -67,13 +66,6 @@ public:
         block_in_use = blockInUse;
     }
 
-    int *getDirectBlocks() const {
-        return directBlocks;
-    }
-
-    void setDirectBlocks(int *directBlocks) {
-        fsInode::directBlocks = directBlocks;
-    }
 
     int getSingleInDirect() const {
         return singleInDirect;
@@ -83,37 +75,13 @@ public:
         fsInode::singleInDirect = singleInDirect;
     }
 
-    int *getDoubleInDirect() const {
-        return doubleInDirect;
-    }
-
-    void setDoubleInDirect(int *doubleInDirect) {
-        fsInode::doubleInDirect = doubleInDirect;
-    }
-
-    int getNumOfDirectBlocks() const {
-        return num_of_direct_blocks;
-    }
-
-    void setNumOfDirectBlocks(int numOfDirectBlocks) {
-        num_of_direct_blocks = numOfDirectBlocks;
-    }
-
-    int getNumOfDoubleIndirectBlocks() const {
-        return num_of_double_indirect_blocks;
-    }
-
-    void setNumOfDoubleIndirectBlocks(int numOfDoubleIndirectBlocks) {
-        num_of_double_indirect_blocks = numOfDoubleIndirectBlocks;
-    }
-
     int getBlockSize() const {
         return block_size;
     }
 
     void setBlockSize(int blockSize) {
         block_size = blockSize;
-    }*/
+    }
 
 
 public:
@@ -144,7 +112,6 @@ public:
         file.first = FileName;
         file.second = fsi;
         inUse = true;
-
     }
 
     // ------------------------------------------------------------------------
@@ -165,6 +132,8 @@ public:
     void setInUse(bool _inUse) {
         inUse = _inUse ;
     }
+
+
 };
 
 #define DISK_SIM_FILE "DISK_SIM_FILE.txt"
@@ -183,11 +152,16 @@ class fsDisk {
     // Unix directories are lists of association structures,
     // each of which contains one filename and one inode number.
     map<string, fsInode*>  MainDir ;
-
+    map<string, FileDescriptor> NamedDir;
     // OpenFileDescriptors --  when you open a file,
     // the operating system creates an entry to represent that file
     // This entry number is the file descriptor.
     map<int ,FileDescriptor > OpenFileDescriptors;
+    /*
+     * FileDescriptor
+ *      pair<string, fsInode*> file;
+        bool inUse;
+     * */
 
     int direct_enteris;
     int block_size;
@@ -256,26 +230,30 @@ public:
         block_size = blockSize;
         BitVector = new int[BitVectorSize];
         BLOCKS_IN_USE = 0;
-
-
     }
 
     int OpenFile(string FileName){
         if (is_formated == false || MainDir.find(FileName)!= MainDir.end())
             return -1;
-
+        FileDescriptor curfile = NamedDir.find(FileName)->second;
+        if (curfile.isInUse()== true)
+            return -1;
+        int newOpenIndex = FindEmptyDescriptor();
+        curfile.setInUse(true);
+        OpenFileDescriptors.insert({newOpenIndex,curfile});
+        return newOpenIndex;
     }
 
     // ------------------------------------------------------------------------
     int CreateFile(string fileName) {
         if (is_formated == false || MainDir.find(fileName)!= MainDir.end())
             return -1;
-
         fsInode newFile(block_size);
         FileDescriptor newFileDesc(fileName, &newFile);
         int indexDescriptor = FindEmptyDescriptor();
         OpenFileDescriptors.insert({indexDescriptor,newFileDesc});
         MainDir.insert({fileName,&newFile});
+        NamedDir.insert({fileName,newFileDesc});
         return indexDescriptor;
     }
 
@@ -290,24 +268,34 @@ public:
         return fileName;
     }
     // ------------------------------------------------------------------------
+
+//    @TODO
     int WriteToFile(int fd, char *buf, int len ) {
+        if (is_formated == false) {
+            return -1;
+        }
+        if (OpenFileDescriptors.find(fd) == OpenFileDescriptors.end()) { // If File is not open
+            return -1;
+        }
+        FileDescriptor FileD = OpenFileDescriptors.find(fd)->second;
 
 
     }
-    // ------------------------------------------------------------------------
+    // @TODO
     int DelFile( string FileName ) {
 
     }
-    // ------------------------------------------------------------------------
+    // @TODO
     int ReadFromFile(int fd, char *buf, int len ) {
-
-
 
     }
 
-    // ------------------------------------------------------------------------
+    // @TODO
     int GetFileSize(int fd) {
-
+        if(is_formated == false || OpenFileDescriptors.find(fd) == OpenFileDescriptors.end())
+            return -1;
+        FileDescriptor file = OpenFileDescriptors.find(fd)->second;
+        return file.getInode()->getFileSize();
     }
 
     // ------------------------------------------------------------------------
@@ -318,7 +306,17 @@ public:
 
     // ------------------------------------------------------------------------
     int RenameFile(string oldFileName, string newFileName) {
-
+        if (is_formated == false || MainDir.find(oldFileName) == MainDir.end())
+            return -1;
+        FileDescriptor file = NamedDir.find(oldFileName)->second;
+        fsInode *fsInode = MainDir.find(oldFileName)->second;
+        if (file.isInUse() == true)
+            return -1;
+        MainDir.erase(oldFileName);
+        MainDir.insert({newFileName,fsInode});
+        NamedDir.erase(oldFileName);
+        NamedDir.insert({newFileName,file});
+        return 0;
     }
 
 };
