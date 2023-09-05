@@ -11,12 +11,11 @@
 
 using namespace std;
 
-#define DISK_SIZE 512
+#define DISK_SIZE 256
 int BLOCKS_IN_USE;
 
 
-char  decToBinary(int n , char &c)
-{
+char decToBinary(int n, char &c) {
     // array to store binary number
     int binaryNum[8];
 
@@ -30,7 +29,7 @@ char  decToBinary(int n , char &c)
 
     // printing binary array in reverse order
     for (int j = i - 1; j >= 0; j--) {
-        if (binaryNum[j]==1)
+        if (binaryNum[j] == 1)
             c = c | 1u << j;
     }
 }
@@ -96,13 +95,15 @@ public:
         block_size = blockSize;
     }
 
-    int getDirect1(){
+    int getDirect1() {
         return directBlock1;
     }
-    int getDirect2(){
+
+    int getDirect2() {
         return directBlock2;
     }
-    int getDirect3(){
+
+    int getDirect3() {
         return directBlock3;
     }
 
@@ -126,11 +127,11 @@ public:
 
 // ============================================================================
 class FileDescriptor {
-    pair<string, fsInode*> file;
+    pair<string, fsInode *> file;
     bool inUse;
 
 public:
-    FileDescriptor(string FileName, fsInode* fsi) {
+    FileDescriptor(string FileName, fsInode *fsi) {
         file.first = FileName;
         file.second = fsi;
         inUse = true;
@@ -141,7 +142,7 @@ public:
         return file.first;
     }
 
-    fsInode* getInode() {
+    fsInode *getInode() {
 
         return file.second;
 
@@ -151,14 +152,16 @@ public:
     bool isInUse() {
         return (inUse);
     }
+
     void setInUse(bool _inUse) {
-        inUse = _inUse ;
+        inUse = _inUse;
     }
 
 
 };
 
 #define DISK_SIM_FILE "DISK_SIM_FILE.txt"
+
 // ============================================================================
 class fsDisk {
     FILE *sim_disk_fd;
@@ -173,12 +176,12 @@ class fsDisk {
 
     // Unix directories are lists of association structures,
     // each of which contains one filename and one inode number.
-    map<string, fsInode*>  MainDir ;
+    map<string, fsInode *> MainDir;
     map<string, FileDescriptor> NamedDir;
     // OpenFileDescriptors --  when you open a file,
     // the operating system creates an entry to represent that file
     // This entry number is the file descriptor.
-    map<int ,FileDescriptor > OpenFileDescriptors;
+    map<int, FileDescriptor> OpenFileDescriptors;
     /*
      * FileDescriptor
  *      pair<string, fsInode*> file;
@@ -191,11 +194,11 @@ class fsDisk {
 public:
     // ------------------------------------------------------------------------
     fsDisk() {
-        sim_disk_fd = fopen( DISK_SIM_FILE , "r+" );
+        sim_disk_fd = fopen(DISK_SIM_FILE, "r+");
         assert(sim_disk_fd);
-        for (int i=0; i < DISK_SIZE ; i++) {
-            int ret_val = fseek ( sim_disk_fd , i , SEEK_SET );
-            ret_val = fwrite( "\0" ,  1 , 1, sim_disk_fd );
+        for (int i = 0; i < DISK_SIZE; i++) {
+            int ret_val = fseek(sim_disk_fd, i, SEEK_SET);
+            ret_val = fwrite("\0", 1, 1, sim_disk_fd);
             assert(ret_val == 1);
         }
         fflush(sim_disk_fd);
@@ -203,7 +206,7 @@ public:
 
     }
 
-    int FindEmptyDescriptor(){
+    int FindEmptyDescriptor() {
         if (OpenFileDescriptors.empty())
             return 0;
         int emptyIndex = 0;
@@ -216,7 +219,7 @@ public:
         return emptyIndex;
     }
 
-    ~fsDisk(){
+    ~fsDisk() {
         delete[] BitVector;
         MainDir.clear();
         OpenFileDescriptors.clear();
@@ -226,15 +229,15 @@ public:
     // ------------------------------------------------------------------------
     void listAll() {
         int i = 0;
-        for ( auto it = begin (OpenFileDescriptors); it != end (OpenFileDescriptors); ++it) {
-            cout << "index: " << i << ": FileName: " << it->second.getFileName() <<  " , isInUse: " << it->second.isInUse() << " file Size: " << it->second.getInode()->getFileSize();
+        for (auto it = begin(OpenFileDescriptors); it != end(OpenFileDescriptors); ++it) {
+            cout << "index: " << i << ": FileName: " << it->second.getFileName() << " , isInUse: " << it->second.isInUse() << " file Size: " << it->second.getInode()->getFileSize() <<endl;
             i++;
         }
         char bufy;
-        cout << "Disk content: '" ;
-        for (i=0; i < DISK_SIZE ; i++) {
-            int ret_val = fseek ( sim_disk_fd , i , SEEK_SET );
-            ret_val = fread(  &bufy , 1 , 1, sim_disk_fd );
+        cout << "Disk content: '";
+        for (i = 0; i < DISK_SIZE; i++) {
+            int ret_val = fseek(sim_disk_fd, i, SEEK_SET);
+            ret_val = fread(&bufy, 1, 1, sim_disk_fd);
             cout << bufy;
         }
         cout << "'" << endl;
@@ -242,38 +245,44 @@ public:
 
     // ------------------------------------------------------------------------
     void fsFormat(int blockSize = 4) {
-        if(is_formated){
+        if (is_formated) {
             MainDir.clear();
             OpenFileDescriptors.clear();
         }
-        BitVectorSize = DISK_SIZE/blockSize;
+        BitVectorSize = DISK_SIZE / blockSize;
         block_size = blockSize;
         BitVector = new int[BitVectorSize];
+        for(int i=0;i<BitVectorSize;i++)
+            BitVector[i] = 0;
         BLOCKS_IN_USE = 0;
+        cout << "FORMAT DISK: number of blocks " << BitVectorSize <<endl;
+        is_formated = true;
     }
 
-    int OpenFile(string FileName){
-        if (is_formated == false || MainDir.find(FileName)!= MainDir.end())
+    int OpenFile(string FileName) {
+        if (is_formated == false || MainDir.find(FileName) != MainDir.end())
             return -1;
         FileDescriptor curfile = NamedDir.find(FileName)->second;
-        if (curfile.isInUse()== true)
+        if (curfile.isInUse() == true)
             return -1;
         int newOpenIndex = FindEmptyDescriptor();
         curfile.setInUse(true);
-        OpenFileDescriptors.insert({newOpenIndex,curfile});
+        OpenFileDescriptors.insert({newOpenIndex, curfile});
         return newOpenIndex;
     }
 
     // ------------------------------------------------------------------------
     int CreateFile(string fileName) {
-        if (is_formated == false || MainDir.find(fileName)!= MainDir.end())
+        if (is_formated == false)
             return -1;
-        fsInode newFile(block_size);
-        FileDescriptor newFileDesc(fileName, &newFile);
+        fsInode *newFileNode = new fsInode(block_size);
+        newFileNode->setBlockInUse(0);
+        newFileNode->setFileSize(0);
+        FileDescriptor newFileDesc(fileName, newFileNode);
         int indexDescriptor = FindEmptyDescriptor();
-        OpenFileDescriptors.insert({indexDescriptor,newFileDesc});
-        MainDir.insert({fileName,&newFile});
-        NamedDir.insert({fileName,newFileDesc});
+        OpenFileDescriptors.insert({indexDescriptor, newFileDesc});
+        MainDir.insert({fileName, newFileNode});
+        NamedDir.insert({fileName, newFileDesc});
         return indexDescriptor;
     }
 
@@ -291,7 +300,17 @@ public:
     // ------------------------------------------------------------------------
 
 //    @TODO
-    int WriteToFile(int fd, char *buf, int len ) {
+    int findEmptyBlock(int start) {
+        if (BLOCKS_IN_USE == BitVectorSize)
+            return -1;
+        while (BitVector[start] == 1) {
+            start++;
+        }
+        BitVector[start] = 1;
+        return start;
+    }
+
+    int WriteToFile(int fd, char *buf, int len) {
 
         if (is_formated == false) {
             return -1;
@@ -306,42 +325,72 @@ public:
         int fileSize = fileNode->getFileSize();
 
         //If file is empty, and has no blocks,locate an empty block and start writing.
-        if(fileSize == 0){
+        int maxFileSize = (3+block_size+block_size*block_size)*block_size;
+        if(fileNode->getFileSize() == maxFileSize)
+            return -1;
+        int leftSpace = maxFileSize - fileNode->getFileSize();
+        if(len > leftSpace){
+            len = leftSpace;
+            buf[len] = '\0';
+        }
+        int written=0;
+        if (fileSize == 0) {
             /*1- calculate how many blocks needed to write string
              * 2-If not enough space in file and in disk, continue,
              * else remove extra chars.
              * 3- Find empty block, write into it, repeat, until no more space or finished writing string.*/
-            int neededBlocks = ceil(len/block_size);
-            if (neededBlocks > 3){// 1 is the single indirect block
-                neededBlocks+=1;
-            }
-            else if(neededBlocks > 3 + block_size){ // 1+blocksize is the the single indirect block + the double indirect block with its single indirect blocks.
-                neededBlocks+=2+block_size;
+
+            int neededBlocks = ceil(len / block_size);
+            int blocks = neededBlocks;
+            if (blocks > 3) {// 1 is the single indirect block
+                neededBlocks += 1;
+            } else if (blocks > 3 + block_size) { // 1+blocksize is the the single indirect block + the double indirect block with its single indirect blocks.
+                neededBlocks += 2 + block_size;
             }
 
+            int continueFromBlock = 0;
+            int usedBlocks = 0;
+
+            for (int i = 0; i < 3; i++) {
+                int emptyBlock = findEmptyBlock(continueFromBlock);
+                if (i == 0)
+                    fileNode->setDirectBlock1(emptyBlock);
+                else if (i == 1)
+                    fileNode->setDirectBlock2(emptyBlock);
+                else if (i == 2)
+                    fileNode->setDirectBlock3(emptyBlock);
+                if (emptyBlock == -1) {
+                    return -1;
+                }
+                continueFromBlock = emptyBlock + 1;
+                fseek(sim_disk_fd,emptyBlock*block_size,SEEK_SET);
+                fwrite(&buf[written],1,block_size,sim_disk_fd);
+                written+=block_size;
+            }
 
 
         }
-        //If file is not empty, go to current block that has space and continue writing.
-        else{
+            //If file is not empty, go to current block that has space and continue writing.
+        else {
 
         }
 
 
+    }
+
+    // @TODO
+    int DelFile(string FileName) {
 
     }
-    // @TODO
-    int DelFile( string FileName ) {
 
-    }
     // @TODO
-    int ReadFromFile(int fd, char *buf, int len ) {
+    int ReadFromFile(int fd, char *buf, int len) {
 
     }
 
     // @TODO
     int GetFileSize(int fd) {
-        if(is_formated == false || OpenFileDescriptors.find(fd) == OpenFileDescriptors.end())
+        if (is_formated == false || OpenFileDescriptors.find(fd) == OpenFileDescriptors.end())
             return -1;
         FileDescriptor file = OpenFileDescriptors.find(fd)->second;
         return file.getInode()->getFileSize();
@@ -362,9 +411,9 @@ public:
         if (file.isInUse() == true)
             return -1;
         MainDir.erase(oldFileName);
-        MainDir.insert({newFileName,fsInode});
+        MainDir.insert({newFileName, fsInode});
         NamedDir.erase(oldFileName);
-        NamedDir.insert({newFileName,file});
+        NamedDir.insert({newFileName, file});
         return 0;
     }
 
@@ -382,10 +431,9 @@ int main() {
 
     fsDisk *fs = new fsDisk();
     int cmd_;
-    while(1) {
+    while (1) {
         cin >> cmd_;
-        switch (cmd_)
-        {
+        switch (cmd_) {
             case 0:   // exit
                 delete fs;
                 exit(0);
@@ -422,13 +470,13 @@ int main() {
             case 6:   // write-file
                 cin >> _fd;
                 cin >> str_to_write;
-                fs->WriteToFile( _fd , str_to_write , strlen(str_to_write) );
+                fs->WriteToFile(_fd, str_to_write, strlen(str_to_write));
                 break;
 
             case 7:    // read-file
                 cin >> _fd;
-                cin >> size_to_read ;
-                fs->ReadFromFile( _fd , str_to_read , size_to_read );
+                cin >> size_to_read;
+                fs->ReadFromFile(_fd, str_to_read, size_to_read);
                 cout << "ReadFromFile: " << str_to_read << endl;
                 break;
 
