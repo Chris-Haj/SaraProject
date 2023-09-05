@@ -44,6 +44,20 @@ class fsInode {
     int directBlock1;
     int directBlock2;
     int directBlock3;
+public:
+    void setDirectBlock1(int directBlock1) {
+        fsInode::directBlock1 = directBlock1;
+    }
+
+    void setDirectBlock2(int directBlock2) {
+        fsInode::directBlock2 = directBlock2;
+    }
+
+    void setDirectBlock3(int directBlock3) {
+        fsInode::directBlock3 = directBlock3;
+    }
+
+private:
 
     int singleInDirect;
     int doubleInDirect;
@@ -66,7 +80,6 @@ public:
         block_in_use = blockInUse;
     }
 
-
     int getSingleInDirect() const {
         return singleInDirect;
     }
@@ -83,6 +96,15 @@ public:
         block_size = blockSize;
     }
 
+    int getDirect1(){
+        return directBlock1;
+    }
+    int getDirect2(){
+        return directBlock2;
+    }
+    int getDirect3(){
+        return directBlock3;
+    }
 
 public:
     fsInode(int _block_size) {
@@ -141,7 +163,7 @@ public:
 class fsDisk {
     FILE *sim_disk_fd;
 
-    bool is_formated;
+    bool is_formated; //Disk has to be formatted (=1) to start any operation
 
     // BitVector - "bit" (int) vector, indicate which block in the disk is free
     //              or not.  (i.e. if BitVector[0] == 1 , means that the
@@ -216,8 +238,6 @@ public:
             cout << bufy;
         }
         cout << "'" << endl;
-
-
     }
 
     // ------------------------------------------------------------------------
@@ -264,6 +284,7 @@ public:
         if (OpenFileDescriptors.count(fd) <= 0)
             return "-1";
         string fileName = OpenFileDescriptors.find(fd)->second.getFileName();
+        OpenFileDescriptors.find(fd)->second.setInUse(false);
         OpenFileDescriptors.erase(fd);
         return fileName;
     }
@@ -271,13 +292,41 @@ public:
 
 //    @TODO
     int WriteToFile(int fd, char *buf, int len ) {
+
         if (is_formated == false) {
             return -1;
         }
+
         if (OpenFileDescriptors.find(fd) == OpenFileDescriptors.end()) { // If File is not open
             return -1;
         }
+        //If file is open, find it.
         FileDescriptor FileD = OpenFileDescriptors.find(fd)->second;
+        fsInode *fileNode = FileD.getInode();
+        int fileSize = fileNode->getFileSize();
+
+        //If file is empty, and has no blocks,locate an empty block and start writing.
+        if(fileSize == 0){
+            /*1- calculate how many blocks needed to write string
+             * 2-If not enough space in file and in disk, continue,
+             * else remove extra chars.
+             * 3- Find empty block, write into it, repeat, until no more space or finished writing string.*/
+            int neededBlocks = ceil(len/block_size);
+            if (neededBlocks > 3){// 1 is the single indirect block
+                neededBlocks+=1;
+            }
+            else if(neededBlocks > 3 + block_size){ // 1+blocksize is the the single indirect block + the double indirect block with its single indirect blocks.
+                neededBlocks+=2+block_size;
+            }
+
+
+
+        }
+        //If file is not empty, go to current block that has space and continue writing.
+        else{
+
+        }
+
 
 
     }
